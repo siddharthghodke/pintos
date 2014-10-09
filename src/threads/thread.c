@@ -200,6 +200,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+	priority_preempt();
 
   return tid;
 }
@@ -237,8 +238,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
-  t->status = THREAD_READY;
+  //list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, (list_less_func*) &is_more_priority, NULL);   
+	t->status = THREAD_READY;
   intr_set_level (old_level);
 }
 
@@ -308,7 +310,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, (list_less_func*) &is_more_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -336,6 +338,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+	priority_preempt();
 }
 
 /* Returns the current thread's priority. */
@@ -582,3 +585,31 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* function to compare list elements for sorting or ordered insertion */
+bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
+{
+	ASSERT(a != NULL);
+	ASSERT(b != NULL);
+	ASSERT(a != b);
+
+	struct thread *thread_a = list_entry(a, struct thread, elem);
+	struct thread *thread_b = list_entry(b, struct thread, elem);
+	return (thread_a->priority > thread_b->priority);
+}
+
+/* function to preempt current thread to high priority thread */
+void priority_preempt()
+{
+	if(thread_mlfqs == false)
+	{
+		struct thread *cur = thread_current();
+		struct list_elem *e = list_front(&ready_list);
+		struct thread *next = list_entry(e, struct thread, elem);
+		if(cur->priority < next->priority)
+		{
+			thread_yield();
+		}
+	}
+}
+

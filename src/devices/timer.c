@@ -29,6 +29,10 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static void wake_sleeping_threads(void);
+
+/* List of threads in sleep/blocked mode */
+static struct list sleep_list;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -37,6 +41,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+	list_init(&sleep_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -89,11 +94,21 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  //int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+	/*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+	*/
+
+	// disable the interrupt before blocking threads
+	struct thread *cur = thread_current ();
+	enum intr_level old_level = intr_disable ();
+	cur->ticks = ticks;
+	list_push_back(&sleep_list, &cur->sleepelem);
+	thread_block();
+	intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +187,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+	wake_sleeping_threads();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -244,3 +260,23 @@ real_time_delay (int64_t num, int32_t denom)
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
 }
+
+/* Check if any sleeping threads have completed their required ticks
+	 and wake them */
+static void
+wake_sleeping_threads()
+{
+	struct list_elem *e;
+	
+	for(e=list_begin(&sleep_list); e != list_end(&sleep_list); e=list_next(e))
+	{
+		struct thread *t = list_entry(e, struct thread, sleepelem);
+		t->ticks--;
+		if(t->ticks <= 0)
+		{
+			list_remove(&t->sleepelem);
+			thread_unblock(t);
+		}
+	}
+}
+

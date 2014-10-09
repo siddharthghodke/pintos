@@ -93,6 +93,12 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+		/* List element for threads in sleep mode */
+		struct list_elem sleepelem;
+
+		/* Element to store thread ticks, while in sleep mode */ 
+		int64_t ticks;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -137,5 +143,11 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* function to compare list elements for sorting or ordered insertion */
+bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux);
+
+/* function to preempt current thread to high priority thread */
+void priority_preempt(void);
 
 #endif /* threads/thread.h */
