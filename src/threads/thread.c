@@ -242,6 +242,7 @@ thread_unblock (struct thread *t)
 	list_insert_ordered(&ready_list, &t->elem, (list_less_func*) &is_more_priority, NULL);   
 	t->status = THREAD_READY;
   intr_set_level (old_level);
+	//priority_preempt();
 }
 
 /* Returns the name of the running thread. */
@@ -345,7 +346,10 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  if(thread_current()->priority > thread_current()->donated_priority)
+  	return thread_current()->priority;
+	else
+		return thread_current()->donated_priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -465,6 +469,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+	t->donated_priority = -1;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -601,14 +606,16 @@ bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
 /* function to preempt current thread to high priority thread */
 void priority_preempt()
 {
-	if(thread_mlfqs == false)
+	//if(thread_mlfqs == false)
 	{
 		struct thread *cur = thread_current();
-		struct list_elem *e = list_front(&ready_list);
-		struct thread *next = list_entry(e, struct thread, elem);
-		if(cur->priority < next->priority)
-		{
-			thread_yield();
+		if(!list_empty(&ready_list)) {
+			struct list_elem *e = list_front(&ready_list);
+			struct thread *next = list_entry(e, struct thread, elem);
+			if(cur->priority < next->priority)
+			{
+				thread_yield();
+			}
 		}
 	}
 }
