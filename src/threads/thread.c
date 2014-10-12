@@ -346,10 +346,12 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  if(thread_current()->priority > thread_current()->donated_priority)
-  	return thread_current()->priority;
+	struct thread *t = thread_current();
+	int donations = t->donated_priority[0];
+	if(donations > 0 && t->donated_priority[donations] > t->priority)
+		return t->donated_priority[donations];
 	else
-		return thread_current()->donated_priority;
+		return t->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -469,7 +471,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-	t->donated_priority = -1;
+	t->donated_priority[0] = 0;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -608,15 +610,41 @@ void priority_preempt()
 {
 	//if(thread_mlfqs == false)
 	{
-		struct thread *cur = thread_current();
+		//struct thread *cur = thread_current();
 		if(!list_empty(&ready_list)) {
 			struct list_elem *e = list_front(&ready_list);
 			struct thread *next = list_entry(e, struct thread, elem);
-			if(cur->priority < next->priority)
+			if(thread_get_priority() < next->priority)
 			{
 				thread_yield();
 			}
 		}
 	}
 }
+
+int get_priority(struct thread *t)
+{
+	ASSERT(t != NULL);
+	int donations = t->donated_priority[0];
+	if(donations > 0 && t->donated_priority[donations] > t->priority)
+		return t->donated_priority[donations];
+	else
+		return t->priority;
+}
+
+void set_donated_priority(struct thread *t, int donated_priority)
+{
+	ASSERT(t != NULL);
+	ASSERT(PRI_MIN <= donated_priority && donated_priority <= PRI_MAX);
+
+	int donations = t->donated_priority[0];
+	if(donations <= 0)
+		donations = 1;
+	else
+		donations++;
+	
+	t->donated_priority[0] = donations;
+	t->donated_priority[donations] = donated_priority;
+}
+
 

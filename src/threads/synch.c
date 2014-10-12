@@ -117,10 +117,10 @@ sema_up (struct semaphore *sema)
 	{
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
-		//priority_preempt();
 	}
   sema->value++;
   intr_set_level (old_level);
+	priority_preempt();
 }
 
 static void sema_test_helper (void *sema_);
@@ -199,10 +199,16 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-	struct thread *lock_holder = lock->holder;
-	if(lock_holder != NULL)
+	int cur_thread_priority = thread_get_priority();
+	
+	if(lock->holder != NULL)
 	{
-		lock_holder->donated_priority = thread_get_priority();
+		int lock_holder_priority = get_priority(lock->holder);
+		//lock_holder->donated_priority = thread_get_priority();
+		if(lock_holder_priority <= cur_thread_priority)
+		{
+			set_donated_priority(lock->holder, cur_thread_priority);
+		}
 	}
 
   sema_down (&lock->semaphore);
@@ -240,12 +246,47 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-	struct thread *t = lock->holder;
-	t->donated_priority = -1;
+	//t->donated_priority = -1;
+/*
+	if (!list_empty (&sema->waiters)) 
+	{
+    thread_unblock (list_entry (list_pop_front (&sema->waiters),
+                                struct thread, elem));
+	}	
+*/
+
+	struct thread *current_thread = thread_current();
+	struct semaphore *lock_sema = &lock->semaphore;
+	if(!list_empty(&lock_sema->waiters))
+	{
+		struct list_elem *e = list_front(&lock_sema->waiters);
+		struct thread *waiting_thread = list_entry(e, struct thread, elem);
+		int waiting_thread_priority = get_priority(waiting_thread);
+		int donations = current_thread->donated_priority[0];
+		if(donations > 0)
+		{
+			int i = donations;
+			int j;			
+			while(i>0)
+			{
+				if(current_thread->donated_priority[i] == waiting_thread_priority)
+				{
+					j=i;
+					while(j <= donations - 1)
+					{
+						current_thread->donated_priority[j] = current_thread->donated_priority[j+1];
+						j++;
+					}
+					current_thread->donated_priority[0]--;
+					break;
+				}
+				i--;
+			}
+		}
+	}
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
-	priority_preempt();
 }
 
 /* Returns true if the current thread holds LOCK, false
