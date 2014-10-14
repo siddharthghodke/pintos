@@ -308,6 +308,7 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+		struct thread *t;										/* Thread associated with this semaphore */
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -345,6 +346,7 @@ void
 cond_wait (struct condition *cond, struct lock *lock) 
 {
   struct semaphore_elem waiter;
+	struct thread *t = thread_current();
 
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
@@ -352,7 +354,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+	waiter.t = t;
+  list_insert_ordered (&cond->waiters, &waiter.elem, (list_less_func*) &sema_more_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -392,4 +395,16 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
+}
+
+/* function to compare list elements of semaphore_elem for sorting or ordered insertion */
+bool sema_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
+{
+	ASSERT(a != NULL);
+	ASSERT(b != NULL);
+	ASSERT(a != b);
+
+	struct semaphore_elem *sema_a = list_entry(a, struct semaphore_elem, elem);
+	struct semaphore_elem *sema_b = list_entry(b, struct semaphore_elem, elem);
+	return (get_priority(sema_a->t) > get_priority(sema_b->t));
 }

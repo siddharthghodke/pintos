@@ -181,7 +181,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
-  tid = t->tid = allocate_tid ();
+	tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -614,7 +614,9 @@ void priority_preempt()
 		if(!list_empty(&ready_list)) {
 			struct list_elem *e = list_front(&ready_list);
 			struct thread *next = list_entry(e, struct thread, elem);
-			if(thread_get_priority() < next->priority)
+			if(!is_thread(next))
+				return;
+			if(thread_get_priority() < get_priority(next))
 			{
 				thread_yield();
 			}
