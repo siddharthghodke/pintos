@@ -188,6 +188,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 	wake_sleeping_threads();
+
+	bool second_interval = (ticks % TIMER_FREQ == 0);
+	
+
+	if(thread_mlfqs)
+	{
+		if(second_interval)
+			calculate_load_avg();
+		calculate_recent_cpu(second_interval);
+		if(ticks % 4 == 0)
+			recalculate_thread_priorities();
+	}
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

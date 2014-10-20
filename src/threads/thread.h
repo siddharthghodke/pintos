@@ -24,6 +24,8 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 #define MAX_DONATIONS 10								/* Maximum donations that can be accepted */
+#define NICE_MAX 20											/* Highest nice value */
+#define NICE_MIN -20										/* Lowest nice value */
 
 /* A kernel thread or user process.
 
@@ -101,6 +103,12 @@ struct thread
 		/* Element to store thread ticks, while in sleep mode */ 
 		int64_t ticks;
 
+		/* Recent cpu stats for the thread */
+		int recent_cpu;
+
+		/* Thread nice value */
+		int nice;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -155,5 +163,13 @@ void priority_preempt(void);
 int get_priority(struct thread *);
 
 void set_donated_priority(struct thread *, int);
+
+void calculate_load_avg(void);
+
+void calculate_recent_cpu(bool);
+
+void calculate_thread_priority(struct thread *);
+
+void recalculate_thread_priorities(void);
 
 #endif /* threads/thread.h */
