@@ -32,16 +32,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-static bool donated_priority_cmp(struct list_elem *a, struct list_elem *b, void *aux)
-{
-	ASSERT(a != NULL);
-	ASSERT(b != NULL);
-	ASSERT(a != b);
-
-	struct thread *thread_a = list_entry(a, struct thread, elem);
-	struct thread *thread_b = list_entry(b, struct thread, elem);
-	return (get_priority(thread_a) > get_priority(thread_b));
-}
+static bool donated_priority_cmp(struct list_elem *, struct list_elem *, void * UNUSED);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -216,7 +207,6 @@ lock_acquire (struct lock *lock)
 	if(lock->holder != NULL)
 	{
 		int lock_holder_priority = get_priority(lock->holder);
-		//lock_holder->donated_priority = thread_get_priority();
 		if(lock_holder_priority <= cur_thread_priority)
 		{
 			set_donated_priority(lock->holder, cur_thread_priority);
@@ -397,8 +387,21 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
+/* function to compare donated priority of the threads before inserting in list */
+static bool donated_priority_cmp(struct list_elem *a, struct list_elem *b, void *aux UNUSED)
+{
+	ASSERT(a != NULL);
+	ASSERT(b != NULL);
+	ASSERT(a != b);
+
+	struct thread *thread_a = list_entry(a, struct thread, elem);
+	struct thread *thread_b = list_entry(b, struct thread, elem);
+	return (get_priority(thread_a) > get_priority(thread_b));
+}
+
+
 /* function to compare list elements of semaphore_elem for sorting or ordered insertion */
-bool sema_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
+bool sema_more_priority(struct list_elem *a, struct list_elem *b, void *aux UNUSED)
 {
 	ASSERT(a != NULL);
 	ASSERT(b != NULL);
@@ -408,3 +411,6 @@ bool sema_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
 	struct semaphore_elem *sema_b = list_entry(b, struct semaphore_elem, elem);
 	return (get_priority(sema_a->t) > get_priority(sema_b->t));
 }
+
+
+

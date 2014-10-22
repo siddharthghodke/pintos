@@ -203,7 +203,7 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  /* Add to run queue. */
+	/* Add to run queue. */
   thread_unblock (t);
 	
 	/* Initialize recent_cpu value to 0 */
@@ -214,7 +214,7 @@ thread_create (const char *name, int priority,
 
 	priority_preempt();
 
-  return tid;
+	return tid;
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -606,7 +606,7 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* function to compare list elements for sorting or ordered insertion */
-bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
+bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux UNUSED)
 {
 		ASSERT(a != NULL);
 		ASSERT(b != NULL);
@@ -614,11 +614,12 @@ bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux)
 
 		struct thread *thread_a = list_entry(a, struct thread, elem);
 		struct thread *thread_b = list_entry(b, struct thread, elem);
+		//return (get_priority(thread_a) > get_priority(thread_b));
 		return (thread_a->priority > thread_b->priority);
 }
 
 /* function to preempt current thread to high priority thread */
-void priority_preempt()
+void priority_preempt(void)
 {
 		if(!list_empty(&ready_list))
 		{

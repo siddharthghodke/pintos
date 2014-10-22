@@ -100,7 +100,7 @@ struct thread
 		/* List element for threads in sleep mode */
 		struct list_elem sleepelem;
 
-		/* Element to store thread ticks, while in sleep mode */ 
+		/* Element to store thread ticks, i.e. time duration for thread to sleep */ 
 		int64_t ticks;
 
 		/* Recent cpu stats for the thread */
@@ -154,7 +154,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-/* function to compare list elements for sorting or ordered insertion */
+/* function to compare thread list elements for sorting or 
+		ordered insertion	based on priority */
 bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux);
 
 /* function to preempt current thread to high priority thread */
