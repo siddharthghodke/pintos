@@ -59,8 +59,11 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-int f = 1<<14;
-int load_avg;
+/* integer constant for fixed point arithmetic operations */
+static int f = 1<<14;
+
+/* load average of the system */
+static int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
