@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,9 +24,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define MAX_DONATIONS 10								/* Maximum donations that can be accepted */
-#define NICE_MAX 20											/* Highest nice value */
-#define NICE_MIN -20										/* Lowest nice value */
 
 /* A kernel thread or user process.
 
@@ -91,31 +89,42 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-		int donated_priority[MAX_DONATIONS];/* Donated priority */
     struct list_elem allelem;           /* List element for all threads list. */
+
+    /* Owned by process.c. */
+    struct wait_status *wait_status;    /* This process's completion status. */
+    struct list children;               /* Completion status of children. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
-		/* List element for threads in sleep mode */
-		struct list_elem sleepelem;
-
-		/* Element to store thread ticks, i.e. time duration for thread to sleep */ 
-		int64_t ticks;
-
-		/* Recent cpu stats for the thread */
-		int recent_cpu;
-
-		/* Thread nice value */
-		int nice;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
+    struct file *bin_file;              /* Executable. */
+
+    /* Owned by syscall.c. */
+    struct list fds;                    /* List of file descriptors. */
+    int next_handle;                    /* Next handle value. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  };
+
+/* Tracks the completion of a process.
+   Reference held by both the parent, in its `children' list,
+   and by the child, in its `wait_status' pointer. */
+struct wait_status
+  {
+    struct list_elem elem;              /* `children' list element. */
+    struct lock lock;                   /* Protects ref_cnt. */
+    int ref_cnt;                        /* 2=child and parent both alive,
+                                           1=either child or parent alive,
+                                           0=child and parent both dead. */
+    tid_t tid;                          /* Child thread id. */
+    int exit_code;                      /* Child exit code, if dead. */
+    struct semaphore dead;              /* 1=child alive, 0=child dead. */
   };
 
 /* If false (default), use round-robin scheduler.
@@ -153,24 +162,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-/* function to compare thread list elements for sorting or 
-		ordered insertion	based on priority */
-bool is_more_priority(struct list_elem *a, struct list_elem *b, void *aux);
-
-/* function to preempt current thread to high priority thread */
-void priority_preempt(void);
-
-int get_priority(struct thread *);
-
-void set_donated_priority(struct thread *, int);
-
-void calculate_load_avg(void);
-
-void calculate_recent_cpu(bool);
-
-void calculate_thread_priority(struct thread *);
-
-void recalculate_thread_priorities(void);
 
 #endif /* threads/thread.h */
